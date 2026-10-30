@@ -1,0 +1,33 @@
+# Python
+__pycache__/
+*.py[cod]
+*$py.class
+*.so
+.Python
+env/
+.venv/
+venv/
+ENV/
+
+# Configuration & Secrets
+.env
+settings.json
+friday_memory.db
+audit_log.json
+
+# Vosk models & downloads
+vosk-model*
+*.tar.gz
+*.zip
+
+# Audio captures / temporary screenshots
+scratch/
+temp/
+*.tmp
+
+# IDE & OS
+.vscode/
+.idea/
+*.swp
+Thumbs.db
+Desktop.ini
