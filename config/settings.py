@@ -17,8 +17,10 @@ load_dotenv(BASE_DIR / ".env")
 DEFAULT_SETTINGS = {
     "user_name": os.getenv("FRIDAY_USER_NAME", "Sir"),
     "voice": {
-        "rate": int(os.getenv("FRIDAY_VOICE_RATE", "168")),
+        "rate": int(os.getenv("FRIDAY_VOICE_RATE", "160")),
         "volume": float(os.getenv("FRIDAY_VOICE_VOLUME", "1.0")),
+        "pitch": int(os.getenv("FRIDAY_VOICE_PITCH", "-7")),
+        "speed": int(os.getenv("FRIDAY_VOICE_SPEED", "-1")),
         "voice_id": "HKEY_LOCAL_MACHINE\\SOFTWARE\\Microsoft\\Speech\\Voices\\Tokens\\TTS_MS_EN-US_DAVID_11.0",
         "enabled": True,
     },

@@ -1,15 +1,39 @@
 """
 Text-to-Speech (TTS) Engine for FRIDAY AI.
-Uses Windows SAPI5 via pyttsx3 in a thread-safe, interruptible worker.
+Delivers a bold, mature, deep-throat masculine voice persona using Windows SAPI5 (Microsoft David)
+tuned with deep acoustic resonance, steady cadence, and markdown pre-filtering.
 """
 
 import queue
+import re
 import threading
 import time
 from typing import Callable, List, Optional
 import pyttsx3
 
 from config.settings import SettingsManager
+
+
+def clean_speech_text(text: str) -> str:
+    """
+    Cleans markdown formatting, symbols, bullets, and URLs so speech sounds
+    natural, mature, and authoritative without reading technical characters.
+    """
+    if not text:
+        return ""
+    # Remove code blocks
+    t = re.sub(r"```[\s\S]*?```", "", text)
+    # Remove markdown formatting symbols
+    t = re.sub(r"[=\*#_\~`]", " ", t)
+    # Replace bullets and long dashes with natural pauses
+    t = re.sub(r"[•\-\–\—]", ", ", t)
+    # Remove URLs completely
+    t = re.sub(r"https?://\S+", "", t)
+    # Clean raw paths if any
+    t = re.sub(r"[A-Z]:\\[^\s]+", "", t)
+    # Normalize whitespace
+    t = re.sub(r"\s+", " ", t).strip()
+    return t
 
 
 class TextToSpeechEngine:
@@ -29,6 +53,7 @@ class TextToSpeechEngine:
         self._is_speaking = False
         self._stop_event = threading.Event()
         self._state_callback: Optional[Callable[[bool], None]] = None
+        self._current_engine = None
 
         # Start TTS background worker
         self._worker_thread = threading.Thread(target=self._speech_worker, daemon=True)
@@ -39,14 +64,19 @@ class TextToSpeechEngine:
         self._state_callback = callback
 
     def _speech_worker(self):
-        """Worker loop that initializes pyttsx3 per thread to avoid COM STA issues on Windows."""
+        """Worker loop that initializes pyttsx3 per speech item to maintain COM stability."""
         while True:
             try:
-                text = self.speech_queue.get()
-                if text is None:
+                raw_text = self.speech_queue.get()
+                if raw_text is None:
                     break
 
                 if self._stop_event.is_set():
+                    self.speech_queue.task_done()
+                    continue
+
+                clean_text = clean_speech_text(raw_text)
+                if not clean_text:
                     self.speech_queue.task_done()
                     continue
 
@@ -55,25 +85,44 @@ class TextToSpeechEngine:
                     self._state_callback(True)
 
                 engine = pyttsx3.init()
-                rate = self.settings.get("voice.rate", 185)
-                volume = self.settings.get("voice.volume", 1.0)
+                self._current_engine = engine
+
+                # Bold, mature masculine cadence (146-152 WPM delivers deep chest/throat resonance)
+                rate = int(self.settings.get("voice.rate", 148))
+                volume = float(self.settings.get("voice.volume", 1.0))
                 engine.setProperty("rate", rate)
                 engine.setProperty("volume", volume)
 
-                # Preferred bold masculine voice for FRIDAY (David or Mark)
+                # Prioritize deep male voices (David or Mark)
                 voices = engine.getProperty("voices")
                 selected_voice_id = self.settings.get("voice.voice_id")
+                chosen_voice = None
+
                 if selected_voice_id:
-                    engine.setProperty("voice", selected_voice_id)
-                else:
                     for v in voices:
-                        if "david" in v.name.lower() or "mark" in v.name.lower() or "male" in v.name.lower():
-                            engine.setProperty("voice", v.id)
+                        if selected_voice_id.lower() in v.id.lower() or selected_voice_id.lower() in v.name.lower():
+                            chosen_voice = v.id
                             break
 
-                engine.say(text)
+                if not chosen_voice:
+                    for v in voices:
+                        if "david" in v.name.lower() or "mark" in v.name.lower() or "male" in v.name.lower():
+                            chosen_voice = v.id
+                            break
+
+                if chosen_voice:
+                    engine.setProperty("voice", chosen_voice)
+
+                # Direct SAPI Rate fine-tuning for deep masculine timbre
+                try:
+                    engine.proxy._driver._tts.Rate = -2
+                except Exception:
+                    pass
+
+                engine.say(clean_text)
                 engine.runAndWait()
                 del engine
+                self._current_engine = None
 
             except Exception as e:
                 print(f"[TextToSpeechEngine] Speech error: {e}")
@@ -95,7 +144,11 @@ class TextToSpeechEngine:
     def stop(self):
         """Interrupts current speech immediately."""
         self._stop_event.set()
-        # Empty queue
+        if self._current_engine:
+            try:
+                self._current_engine.stop()
+            except Exception:
+                pass
         while not self.speech_queue.empty():
             try:
                 self.speech_queue.get_nowait()
