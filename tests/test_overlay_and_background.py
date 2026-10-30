@@ -446,3 +446,28 @@ def test_wake_greeting_speaks_hello_sir():
     FridayCore._on_wake_word_activated(core, pre_detected_command=None)
     core.tts.speak.assert_called_with("Hello Sir, what can I do for you?")
     core.on_chat_message.assert_called_with("FRIDAY", "Hello Sir, what can I do for you?")
+
+
+def test_wake_phrase_hi_friday_extraction():
+    """Verifies that 'hi friday' and its common variations trigger wake detection."""
+    from voice.wake_word import WakeWordDetector
+
+    wake_tests = [
+        ("hi friday", True, None),
+        ("hi, friday", True, None),
+        ("hi friday open youtube", True, "open youtube"),
+        ("hi, friday, run notepad", True, "run notepad"),
+        ("hey friday", True, None),
+        ("hey, friday", True, None),
+        ("hello friday", True, None),
+        ("ok friday", True, None),
+        ("friday", True, None),
+        ("hi fryday", True, None),
+        ("what is the weather", False, None),
+    ]
+
+    for utterance, expected_wake, expected_cmd in wake_tests:
+        is_wake, cmd = WakeWordDetector.extract_command(utterance)
+        assert is_wake == expected_wake, f"Failed wake check for '{utterance}': got {is_wake}, expected {expected_wake}"
+        if expected_cmd:
+            assert cmd == expected_cmd, f"Failed cmd extraction for '{utterance}': got {cmd}, expected {expected_cmd}"

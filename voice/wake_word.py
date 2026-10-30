@@ -60,34 +60,31 @@ class WakeWordDetector:
     def extract_command(text: str, configured_phrase: str = "hey friday") -> Tuple[bool, Optional[str]]:
         """
         Extracts trailing command from text if wake phrase or 'friday' is present.
-        Supports: 'hey friday', 'ok friday', 'okay friday', 'hi friday', 'hello friday', 'friday'.
+        Supports: 'hey friday', 'ok friday', 'okay friday', 'hi friday', 'hello friday', 'friday',
+        phonetic variants ('fryday', 'fri day'), and handles arbitrary punctuation.
         Returns (is_wake: bool, command: Optional[str]).
         """
+        if not text:
+            return False, None
+
         text_clean = text.lower().strip()
         configured = configured_phrase.lower().strip()
 
-        # Build list of recognized wake phrases
-        phrases = [
-            configured,
-            "hey friday",
-            "ok friday",
-            "okay friday",
-            "hi friday",
-            "hello friday",
-        ]
-        # Remove duplicates while prioritizing longer phrases
-        unique_phrases = sorted(list(set(p for p in phrases if p)), key=len, reverse=True)
+        # Regex matching: (hey|hi|hello|ok|okay|yo|hai)? [optional punctuation] (friday|fryday|fri day|fried day)
+        pattern = re.compile(
+            r"\b(?:hey|hi|hello|ok|okay|yo|hai)?\s*[,.:;!?-]?\s*(?:friday|fryday|fri\s+day|fried\s+day)\b",
+            re.IGNORECASE
+        )
 
-        for phrase in unique_phrases:
-            if phrase in text_clean:
-                idx = text_clean.find(phrase)
-                after = text_clean[idx + len(phrase):].strip(" ,.:;!?")
-                return True, after if after else None
-
-        # Check standalone "friday" with word boundaries
-        match = re.search(r"\bfriday\b", text_clean)
+        match = pattern.search(text_clean)
         if match:
             after = text_clean[match.end():].strip(" ,.:;!?")
+            return True, after if after else None
+
+        # Check configured phrase if custom
+        if configured and configured in text_clean:
+            idx = text_clean.find(configured)
+            after = text_clean[idx + len(configured):].strip(" ,.:;!?")
             return True, after if after else None
 
         return False, None
@@ -108,7 +105,9 @@ class WakeWordDetector:
         recognizer.energy_threshold = 220
         recognizer.dynamic_energy_threshold = True
         recognizer.dynamic_energy_adjustment_damping = 0.15
-        recognizer.pause_threshold = 0.5
+        recognizer.pause_threshold = 0.8
+        recognizer.phrase_threshold = 0.2
+        recognizer.non_speaking_duration = 0.4
 
         while self._running:
             if self._paused or not self.settings.get("wake_word.enabled", True):
@@ -123,11 +122,18 @@ class WakeWordDetector:
 
             try:
                 with sr.Microphone(**mic_args) as source:
-                    # Initial ambient noise calibration
-                    recognizer.adjust_for_ambient_noise(source, duration=0.3)
+                    # Initial ambient noise calibration (only if threshold is very low)
+                    if recognizer.energy_threshold < 150:
+                        recognizer.adjust_for_ambient_noise(source, duration=0.3)
+                    # Clamp energy threshold so microphone never becomes deaf to normal speech
+                    if recognizer.energy_threshold > 400:
+                        recognizer.energy_threshold = 250
 
                     # Persistent listening loop on the open mic stream
                     while self._running and not self._paused:
+                        # Safety check: keep energy threshold responsive
+                        if recognizer.energy_threshold > 400:
+                            recognizer.energy_threshold = 250
                         try:
                             audio = recognizer.listen(source, timeout=2.5, phrase_time_limit=5.0)
                         except sr.WaitTimeoutError:
