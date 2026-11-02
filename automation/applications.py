@@ -294,12 +294,33 @@ class ApplicationController:
             return None
 
     def focus_window(self, hwnd: int) -> bool:
-        """Restores and brings a window to the foreground."""
+        """Restores and forcefully brings a window to the foreground across processes."""
         try:
             import win32gui
             import win32con
+            import win32process
+            import ctypes
+
             win32gui.ShowWindow(hwnd, win32con.SW_RESTORE)
-            win32gui.SetForegroundWindow(hwnd)
+            try:
+                cur_fg = win32gui.GetForegroundWindow()
+                if cur_fg and cur_fg != hwnd:
+                    cur_thread = win32process.GetWindowThreadProcessId(cur_fg)[0]
+                    target_thread = win32process.GetWindowThreadProcessId(hwnd)[0]
+                    cur_pid = ctypes.windll.kernel32.GetCurrentThreadId()
+
+                    ctypes.windll.user32.AttachThreadInput(cur_pid, target_thread, True)
+                    ctypes.windll.user32.AttachThreadInput(cur_thread, target_thread, True)
+
+                    win32gui.BringWindowToTop(hwnd)
+                    win32gui.SetForegroundWindow(hwnd)
+
+                    ctypes.windll.user32.AttachThreadInput(cur_thread, target_thread, False)
+                    ctypes.windll.user32.AttachThreadInput(cur_pid, target_thread, False)
+                else:
+                    win32gui.SetForegroundWindow(hwnd)
+            except Exception:
+                win32gui.SetForegroundWindow(hwnd)
             return True
         except Exception:
             return False
@@ -396,13 +417,13 @@ class ApplicationController:
             cmd_args.extend(arguments)
 
         try:
-            # Safe launch without shell=True
+            # Safe launch without shell=True, detached from caller pipes to avoid broken pipe on exit
             proc = subprocess.Popen(
                 cmd_args,
                 shell=False,
                 stdin=subprocess.DEVNULL,
                 stdout=subprocess.DEVNULL,
-                stderr=subprocess.PIPE,
+                stderr=subprocess.DEVNULL,
             )
 
             # Brief pause to verify process didn't terminate immediately with an error

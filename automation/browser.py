@@ -106,6 +106,7 @@ class BrowserController:
         Verifies navigation and returns an honest, action-specific response.
         """
         target_browser = browser_name or browser or "default"
+        b_clean = target_browser.strip().lower()
         if not url:
             return False, "No destination URL provided."
 
@@ -129,7 +130,7 @@ class BrowserController:
                     shell=False,
                     stdin=subprocess.DEVNULL,
                     stdout=subprocess.DEVNULL,
-                    stderr=subprocess.PIPE,
+                    stderr=subprocess.DEVNULL,
                 )
 
                 # Short yield for window to focus or process to accept command
@@ -146,21 +147,20 @@ class BrowserController:
 
             except Exception as e:
                 logger.error(f"[BrowserController] Error launching {resolved_exe}: {e}")
-                # Fallback to standard webbrowser module
-                try:
-                    if webbrowser.open(url):
-                        return True, f"{site_display} opened in {browser_display} via system fallback."
-                    else:
-                        return False, f"I couldn't navigate to {site_display}. Here is the reason: {e}"
-                except Exception as fb_err:
-                    return False, f"I couldn't navigate to {site_display}. Here is the reason: {fb_err}"
+                if b_clean not in ("default", "browser", "web browser", "my browser"):
+                    return False, f"I couldn't navigate to {site_display}. Here is the reason: {e}"
 
-        # ── Default Browser Fallback ──────────────────────────────────────────
+        # ── Default Browser Fallback via os.startfile and webbrowser ─────────
+        try:
+            import os
+            os.startfile(url)
+            return True, f"{site_display} is open in your browser."
+        except Exception:
+            pass
+
         try:
             opened = webbrowser.open(url)
             if opened:
-                if browser != "default":
-                    return True, f"{site_display} is open (opened in default browser as {browser} was not found)."
                 return True, f"{site_display} is open in your browser."
             else:
                 return False, f"I couldn't navigate to {site_display}. The system browser failed to respond."
