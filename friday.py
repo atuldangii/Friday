@@ -41,11 +41,19 @@ def run_gui():
     if icon_path.exists():
         app.setWindowIcon(QIcon(str(icon_path)))
 
+    print("=" * 60)
+    print(f" {APP_NAME} v{APP_VERSION} [System Online]")
+    print(" Voice: Bold Mature Masculine (Microsoft David, SAPI Rate: -2)")
+    print(" Background Listening: Active ('Hey FRIDAY', 'Hi FRIDAY')")
+    print(" Summon Hotkey: Ctrl+Alt+F")
+    print("=" * 60)
+
     core = FridayCore()
     window = MainWindow(core)
     if icon_path.exists():
         window.setWindowIcon(QIcon(str(icon_path)))
     window.show()
+    window.bring_to_front()
 
     sys.exit(app.exec())
 
