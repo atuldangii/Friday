@@ -77,6 +77,7 @@ def run_cli():
 def main():
     parser = argparse.ArgumentParser(description=f"{APP_NAME} - Windows 11 Desktop Assistant")
     parser.add_argument("--cli", "--no-gui", dest="cli", action="store_true", help="Run in CLI headless mode")
+    parser.add_argument("--console", action="store_true", help="Run with visible console")
     parser.add_argument("--test-cmd", type=str, help="Execute a single command and exit")
     args = parser.parse_args()
 
@@ -93,4 +94,13 @@ def main():
 
 
 if __name__ == "__main__":
-    main()
+    try:
+        main()
+    except Exception:
+        import traceback, time
+        log_dir = Path(__file__).resolve().parent / "logs"
+        log_dir.mkdir(parents=True, exist_ok=True)
+        with open(log_dir / "friday_crash.log", "a", encoding="utf-8") as f:
+            f.write(f"\n--- CRASH AT {time.strftime('%Y-%m-%d %H:%M:%S')} ---\n")
+            traceback.print_exc(file=f)
+        raise
