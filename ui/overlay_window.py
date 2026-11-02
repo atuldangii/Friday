@@ -424,7 +424,7 @@ class FridayOverlayWindow(QWidget):
         if user_text:
             self.user_query_lbl.setText(f'"{user_text}"')
         else:
-            self.user_query_lbl.setText("Hello Sir, what can I do for you?")
+            self.user_query_lbl.setText("Hello Boss, what can I do for you?")
 
         self.response_lbl.setText("")
         self.set_state(initial_state)

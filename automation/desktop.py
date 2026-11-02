@@ -251,14 +251,14 @@ class DesktopController:
                 subprocess.Popen(f"shutdown /s /t {delay}", shell=True)
                 if delay_seconds > 0:
                     return True, f"System will shut down in {delay} seconds. Say 'cancel shutdown' to abort."
-                return True, "Initiating system shutdown. Goodbye, Sir."
+                return True, "Initiating system shutdown. Goodbye, Boss."
 
             elif cmd_clean == "restart":
                 delay = max(3, int(delay_seconds)) if delay_seconds > 0 else 3
                 subprocess.Popen(f"shutdown /r /t {delay}", shell=True)
                 if delay_seconds > 0:
                     return True, f"System will restart in {delay} seconds. Say 'cancel shutdown' to abort."
-                return True, "Restarting the system now. I will be right back, Sir."
+                return True, "Restarting the system now. I will be right back, Boss."
 
             elif cmd_clean == "sleep":
                 def _trigger_sleep():
@@ -284,7 +284,7 @@ class DesktopController:
                         print(f"[DesktopController] Sleep trigger error: {ex}")
 
                 threading.Thread(target=_trigger_sleep, daemon=True).start()
-                return True, "Putting the system to sleep. Good night, Sir."
+                return True, "Putting the system to sleep. Good night, Boss."
 
             elif cmd_clean == "hibernate":
                 def _trigger_hibernate():
@@ -292,7 +292,7 @@ class DesktopController:
                     os.system("shutdown /h")
 
                 threading.Thread(target=_trigger_hibernate, daemon=True).start()
-                return True, "Hibernating the system. Your session will be saved, Sir."
+                return True, "Hibernating the system. Your session will be saved, Boss."
 
             elif cmd_clean == "lock":
                 def _trigger_lock():
@@ -300,7 +300,7 @@ class DesktopController:
                     ctypes.windll.user32.LockWorkStation()
 
                 threading.Thread(target=_trigger_lock, daemon=True).start()
-                return True, "Workstation locked. See you soon, Sir."
+                return True, "Workstation locked. See you soon, Boss."
 
             elif cmd_clean == "cancel_shutdown":
                 os.system("shutdown /a")

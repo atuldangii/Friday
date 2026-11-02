@@ -239,7 +239,7 @@ class MainWindow(QMainWindow):
         self.confirm_action_signal.connect(self._show_permission_dialog)
 
         # Initial conversation welcome
-        user_name = self.core.settings.get("user_name", "Sir")
+        user_name = self.core.settings.get("user_name", "Boss")
         self.chat_widget.add_message(
             "FRIDAY",
             f"Good day, {user_name}. FRIDAY MARK VII online and ready.\n"

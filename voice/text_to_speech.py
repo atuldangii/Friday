@@ -16,13 +16,15 @@ from config.settings import SettingsManager
 
 def clean_speech_text(text: str) -> str:
     """
-    Cleans markdown formatting, symbols, bullets, and URLs so speech sounds
+    Cleans markdown formatting, symbols, bullets, math operators, and URLs so speech sounds
     natural, mature, and authoritative without reading technical characters.
     """
     if not text:
         return ""
     # Remove code blocks
     t = re.sub(r"```[\s\S]*?```", "", text)
+    # Convert math symbols to spoken words
+    t = t.replace("*", " times ").replace("/", " divided by ").replace("=", " equals ").replace("+", " plus ")
     # Remove markdown formatting symbols
     t = re.sub(r"[=\*#_\~`]", " ", t)
     # Replace bullets and long dashes with natural pauses
@@ -30,7 +32,7 @@ def clean_speech_text(text: str) -> str:
     # Remove URLs completely
     t = re.sub(r"https?://\S+", "", t)
     # Clean raw paths if any
-    t = re.sub(r"[A-Z]:\\[^\s]+", "", t)
+    t = re.sub(r"[A-Za-z]:\\[^\s]+", "", t)
     # Normalize whitespace
     t = re.sub(r"\s+", " ", t).strip()
     return t
@@ -64,7 +66,7 @@ class TextToSpeechEngine:
         self._state_callback = callback
 
     def _speech_worker(self):
-        """Worker loop that initializes pyttsx3 per speech item to maintain COM stability."""
+        """Worker loop that initializes pyttsx3 per speech item to deliver a deep, bold, mature masculine voice."""
         while True:
             try:
                 raw_text = self.speech_queue.get()
@@ -87,8 +89,8 @@ class TextToSpeechEngine:
                 engine = pyttsx3.init()
                 self._current_engine = engine
 
-                # Bold, mature masculine cadence (146-152 WPM delivers deep chest/throat resonance)
-                rate = int(self.settings.get("voice.rate", 148))
+                # Bold, deep mature masculine voice (135 WPM + SAPI Rate -3 delivers deep chest/throat resonance)
+                rate = int(self.settings.get("voice.rate", 135))
                 volume = float(self.settings.get("voice.volume", 1.0))
                 engine.setProperty("rate", rate)
                 engine.setProperty("volume", volume)
@@ -113,9 +115,10 @@ class TextToSpeechEngine:
                 if chosen_voice:
                     engine.setProperty("voice", chosen_voice)
 
-                # Direct SAPI Rate fine-tuning for deep masculine timbre
+                # Direct SAPI Rate fine-tuning for deep masculine baritone timbre
                 try:
-                    engine.proxy._driver._tts.Rate = -2
+                    sapi_rate = int(self.settings.get("voice.speed", -3))
+                    engine.proxy._driver._tts.Rate = sapi_rate
                 except Exception:
                     pass
 
@@ -149,6 +152,15 @@ class TextToSpeechEngine:
                 self._current_engine.stop()
             except Exception:
                 pass
+        while not self.speech_queue.empty():
+            try:
+                self.speech_queue.get_nowait()
+                self.speech_queue.task_done()
+            except queue.Empty:
+                break
+        self._is_speaking = False
+        if self._state_callback:
+            self._state_callback(False)
         while not self.speech_queue.empty():
             try:
                 self.speech_queue.get_nowait()

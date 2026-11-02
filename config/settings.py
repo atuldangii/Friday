@@ -15,12 +15,12 @@ from .constants import SETTINGS_FILE, BASE_DIR
 load_dotenv(BASE_DIR / ".env")
 
 DEFAULT_SETTINGS = {
-    "user_name": os.getenv("FRIDAY_USER_NAME", "Sir"),
+    "user_name": os.getenv("FRIDAY_USER_NAME", "Boss"),
     "voice": {
-        "rate": int(os.getenv("FRIDAY_VOICE_RATE", "160")),
+        "rate": int(os.getenv("FRIDAY_VOICE_RATE", "140")),
         "volume": float(os.getenv("FRIDAY_VOICE_VOLUME", "1.0")),
         "pitch": int(os.getenv("FRIDAY_VOICE_PITCH", "-7")),
-        "speed": int(os.getenv("FRIDAY_VOICE_SPEED", "-1")),
+        "speed": int(os.getenv("FRIDAY_VOICE_SPEED", "-2")),
         "voice_id": "HKEY_LOCAL_MACHINE\\SOFTWARE\\Microsoft\\Speech\\Voices\\Tokens\\TTS_MS_EN-US_DAVID_11.0",
         "enabled": True,
     },

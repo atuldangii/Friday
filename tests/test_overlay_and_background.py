@@ -432,10 +432,10 @@ def test_info_query_redirects_to_chrome():
     assert q3.browser == "chrome"
 
 
-def test_wake_greeting_speaks_hello_sir():
-    """Verifies that wake-word activation speaks 'Hello Sir, what can I do for you?'."""
+def test_wake_greeting_speaks_hello_boss():
+    """Verifies that wake-word activation speaks 'Hello Boss, what can I do for you?'."""
     core = MagicMock()
-    core.settings.get.return_value = "Sir"
+    core.settings.get.return_value = "Boss"
     core.tts = MagicMock()
     core.recognizer.listen_and_recognize.return_value = (False, None)
     core.wake_detector = MagicMock()
@@ -444,8 +444,8 @@ def test_wake_greeting_speaks_hello_sir():
     core.on_chat_message = MagicMock()
 
     FridayCore._on_wake_word_activated(core, pre_detected_command=None)
-    core.tts.speak.assert_called_with("Hello Sir, what can I do for you?")
-    core.on_chat_message.assert_called_with("FRIDAY", "Hello Sir, what can I do for you?")
+    core.tts.speak.assert_called_with("Hello Boss, what can I do for you?")
+    core.on_chat_message.assert_called_with("FRIDAY", "Hello Boss, what can I do for you?")
 
 
 def test_wake_phrase_hi_friday_extraction():

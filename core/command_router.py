@@ -594,7 +594,7 @@ class CommandRouter:
 
         # 14. Conversational greetings
         if any(cmd_lower.startswith(g) for g in ["hello", "hi", "hey", "good morning", "good evening", "who are you"]):
-            user_name = self.settings.get("user_name", "Sir")
+            user_name = self.settings.get("user_name", "Boss")
             return ConversationalResponseAction(
                 response_text=f"Greetings, {user_name}. FRIDAY systems are fully operational and standing by for your command."
             )
@@ -616,4 +616,4 @@ class CommandRouter:
         if cmd and len(cmd) > 2:
             return WebSearchAction(query=cmd, browser="chrome")
 
-        return ConversationalResponseAction(response_text="Hello Sir, what can I do for you?")
+        return ConversationalResponseAction(response_text="Hello Boss, what can I do for you?")

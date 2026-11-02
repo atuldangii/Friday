@@ -135,12 +135,12 @@ class FridayCore:
                 return
 
             self._set_state("LISTENING")
-            user_name = self.settings.get("user_name", "Sir")
+            user_name = self.settings.get("user_name", "Boss")
             greeting = f"Hello {user_name}, what can I do for you?"
             if self.on_chat_message:
                 self.on_chat_message("FRIDAY", greeting)
 
-            # Speak: "Hello Sir, what can I do for you?"
+            # Speak: "Hello Boss, what can I do for you?"
             self.tts.speak(greeting)
             self.tts.wait_until_done(timeout=3.0)
 
@@ -316,7 +316,7 @@ class FridayCore:
                 type_ok, type_err = self.desktop_ctrl.type_text(action.content)
                 if type_ok:
                     success = True
-                    message = "Opened Notepad and drafted your note, Sir."
+                    message = "Opened Notepad and drafted your note, Boss."
                 else:
                     success = False
                     message = f"Opened Notepad, but typing failed: {type_err}"
@@ -398,13 +398,13 @@ class FridayCore:
                             message = ai_res["response_text"]
                         else:
                             success = True
-                            message = "I processed your request, Sir."
+                            message = "I processed your request, Boss."
                     else:
                         success = True
-                        message = "I processed your request, Sir."
+                        message = "I processed your request, Boss."
                 else:
                     success = True
-                    message = "Command received, Sir."
+                    message = "Command received, Boss."
 
             else:
                 success = False
