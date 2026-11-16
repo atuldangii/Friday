@@ -414,12 +414,17 @@ class DeliberativeReasoningEngine:
                 f"Hello {user_name}, what can I do for you?",
             )
 
-        # 2. Inquiring about operational state & how FRIDAY is feeling
-        if any(q in p_lower for q in [
-            "how are you", "how're you", "how are you doing", "how are you feeling",
-            "how do you feel", "how is it going", "how's it going", "how do you do",
-            "how is your day", "how's your day", "are you feeling okay", "how are you feeling today"
-        ]):
+        # 2. Inquiring about operational state & how FRIDAY is feeling / doing
+        feeling_patterns = [
+            r"\bhow\s+(?:are|r)\s+(?:you|u)\b",
+            r"\bhow(?:\'re|\s+are)\s+(?:you|u)\s+(?:feeling|felling|doing)\b",
+            r"\bhow\s+do\s+(?:you|u)\s+feel\b",
+            r"\b(?:are|r)\s+(?:you|u)\s+(?:feeling|felling|doing|okay|ok)\b",
+            r"\bhow(?:\'s|\s+is)\s+(?:it\s+going|everything|your\s+day|life)\b",
+            r"\bhow\s+do\s+you\s+do\b",
+            r"\b(?:feeling|felling)\b",
+        ]
+        if any(re.search(pat, p_lower) for pat in feeling_patterns):
             thought = "Conversational dialogue: Inquiring about assistant's operational state."
             return (
                 thought,

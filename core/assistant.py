@@ -206,11 +206,8 @@ class FridayCore:
                 progress_callback=self.on_task_progress,
             )
         else:
-            self._set_state("EXECUTING")
-            success, response_message = self.planner.execute_plan(
-                clean_text,
-                progress_callback=self.on_task_progress,
-            )
+            response_message = deliberation.response_text or f"I'm here, {user_name}. How can I assist you right now?"
+            success = deliberation.is_sensible
 
         t_end = time.perf_counter()
         elapsed_ms = (t_end - t_start) * 1000

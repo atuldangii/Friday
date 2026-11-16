@@ -157,3 +157,37 @@ def test_friday_core_process_command_sensible_conversation():
     assert "peak performance" in res.lower() or "functioning" in res.lower()
     core.tts.speak.assert_called_once()
 
+
+def test_command_router_how_are_you_felling_friday_variant():
+    """Verifies typos like 'how are you felling friday' and 'are you feeling' never open Chrome."""
+    from core.command_router import CommandRouter
+    from ai.tool_schemas import ConversationalResponseAction, WebSearchAction
+
+    router = CommandRouter()
+    act1 = router.route("how are you felling friday")
+    assert isinstance(act1, ConversationalResponseAction)
+    assert not isinstance(act1, WebSearchAction)
+    assert "peak performance" in act1.response_text.lower() or "functioning" in act1.response_text.lower()
+
+    act2 = router.route("are you feeling")
+    assert isinstance(act2, ConversationalResponseAction)
+    assert not isinstance(act2, WebSearchAction)
+
+
+def test_wake_word_trailing_phrase_extraction():
+    """Verifies commands where 'friday' is at the end (e.g. 'how are you feeling friday')."""
+    from voice.wake_word import WakeWordDetector
+
+    is_wake1, cmd1 = WakeWordDetector.extract_command("how are you feeling friday")
+    assert is_wake1 is True
+    assert cmd1 == "how are you feeling"
+
+    is_wake2, cmd2 = WakeWordDetector.extract_command("how are you felling friday")
+    assert is_wake2 is True
+    assert cmd2 == "how are you felling"
+
+    is_wake3, cmd3 = WakeWordDetector.extract_command("hey friday open chrome")
+    assert is_wake3 is True
+    assert cmd3 == "open chrome"
+
+

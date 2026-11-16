@@ -79,13 +79,25 @@ class WakeWordDetector:
         match = pattern.search(text_clean)
         if match:
             after = text_clean[match.end():].strip(" ,.:;!?")
-            return True, after if after else None
+            before = text_clean[:match.start()].strip(" ,.:;!?")
+            # If command spoken after wake phrase ("Hey Friday, how are you feeling")
+            if after:
+                return True, after
+            # If command spoken before wake phrase ("How are you feeling, Friday")
+            if before:
+                return True, before
+            return True, None
 
         # Check configured phrase if custom
         if configured and configured in text_clean:
             idx = text_clean.find(configured)
             after = text_clean[idx + len(configured):].strip(" ,.:;!?")
-            return True, after if after else None
+            before = text_clean[:idx].strip(" ,.:;!?")
+            if after:
+                return True, after
+            if before:
+                return True, before
+            return True, None
 
         return False, None
 

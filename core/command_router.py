@@ -222,6 +222,12 @@ class CommandRouter:
             if cleaned.lower().startswith(ww):
                 cleaned = cleaned[len(ww):].strip(", !.? ")
 
+        # Remove trailing wake phrases (e.g. "how are you feeling friday" -> "how are you feeling")
+        if not cleaned.lower().startswith("sleep"):
+            for ww in wake_words:
+                if cleaned.lower().endswith(ww):
+                    cleaned = cleaned[:-len(ww)].strip(", !.? ")
+
         # Remove leading request prefixes
         prefixes = [
             "can you please",
@@ -317,7 +323,7 @@ class CommandRouter:
             return PowerAction(power_command="lock")
 
         # 1. Stop Listening / Pause Wake Word
-        if any(kw in cmd_lower for kw in ["stop listening", "pause listening", "mute mic", "mute microphone", "go to sleep", "sleep friday", "stop voice"]):
+        if any(kw in cmd_lower for kw in ["stop listening", "pause listening", "mute mic", "mute microphone", "go to sleep", "sleep friday", "sleep", "stop voice"]):
             return StopListeningAction()
 
         # 1b. Media Controls (YouTube, browser audio, volume, playback)
@@ -613,12 +619,17 @@ class CommandRouter:
                 response_text=f"Hello {user_name}, what can I do for you?"
             )
 
-        # 15. Inquiring about operational state & how FRIDAY is feeling
-        if any(q in cmd_lower for q in [
-            "how are you", "how're you", "how are you doing", "how are you feeling",
-            "how do you feel", "how is it going", "how's it going", "how do you do",
-            "how is your day", "how's your day", "are you feeling okay"
-        ]):
+        # 15. Inquiring about operational state & how FRIDAY is feeling / doing
+        feeling_patterns = [
+            r"\bhow\s+(?:are|r)\s+(?:you|u)\b",
+            r"\bhow(?:\'re|\s+are)\s+(?:you|u)\s+(?:feeling|felling|doing)\b",
+            r"\bhow\s+do\s+(?:you|u)\s+feel\b",
+            r"\b(?:are|r)\s+(?:you|u)\s+(?:feeling|felling|doing|okay|ok)\b",
+            r"\bhow(?:\'s|\s+is)\s+(?:it\s+going|everything|your\s+day|life)\b",
+            r"\bhow\s+do\s+you\s+do\b",
+            r"\b(?:feeling|felling)\b",
+        ]
+        if any(re.search(pat, cmd_lower) for pat in feeling_patterns):
             return ConversationalResponseAction(
                 response_text=f"I'm functioning at peak performance, {user_name}. Background listening is active, memory buffers are clear, and I'm ready to assist you."
             )
