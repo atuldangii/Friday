@@ -103,3 +103,57 @@ def test_desktop_action_identified_and_planned(engine):
     res = engine.deliberate("Open YouTube and play Interstellar soundtrack")
     assert res.intent == "desktop_action"
     assert "interstellar" in res.planned_command.lower()
+
+
+def test_command_router_how_are_you_feeling_does_not_open_chrome():
+    """Verifies that 'how are you feeling' never routes to WebSearchAction in CommandRouter."""
+    from core.command_router import CommandRouter
+    from ai.tool_schemas import ConversationalResponseAction, WebSearchAction
+
+    router = CommandRouter()
+
+    act1 = router.route("how are you feeling")
+    assert isinstance(act1, ConversationalResponseAction)
+    assert not isinstance(act1, WebSearchAction)
+    assert "peak performance" in act1.response_text.lower() or "functioning" in act1.response_text.lower()
+
+    act2 = router.route("how are you feeling today")
+    assert isinstance(act2, ConversationalResponseAction)
+    assert not isinstance(act2, WebSearchAction)
+
+
+def test_command_router_wake_greeting_returns_hello_boss():
+    """Verifies that 'Hey Friday' routes to 'Hello Boss, what can I do for you?'."""
+    from core.command_router import CommandRouter
+    from ai.tool_schemas import ConversationalResponseAction
+
+    router = CommandRouter()
+    act = router.route("Hey Friday")
+    assert isinstance(act, ConversationalResponseAction)
+    assert "hello boss, what can i do for you?" in act.response_text.lower()
+
+
+def test_command_router_arbitrary_chat_does_not_open_chrome():
+    """Verifies that casual chit-chat does not launch Google Chrome."""
+    from core.command_router import CommandRouter
+    from ai.tool_schemas import ConversationalResponseAction, WebSearchAction
+
+    router = CommandRouter()
+    act = router.route("I had a very long day at work")
+    assert isinstance(act, ConversationalResponseAction)
+    assert not isinstance(act, WebSearchAction)
+
+
+def test_friday_core_process_command_sensible_conversation():
+    """Verifies end-to-end FridayCore processing of conversational input."""
+    from unittest.mock import MagicMock
+    from core.assistant import FridayCore
+
+    core = FridayCore()
+    core.tts = MagicMock()
+    core.tts.wait_until_done = MagicMock()
+
+    res = core.process_command("how are you feeling today?")
+    assert "peak performance" in res.lower() or "functioning" in res.lower()
+    core.tts.speak.assert_called_once()
+

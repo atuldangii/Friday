@@ -7,7 +7,7 @@ Ensures zero-latency offline command execution without requiring any cloud API.
 import datetime
 import os
 import re
-from typing import List, Optional, Tuple
+from typing import Any, List, Optional, Tuple
 import psutil
 
 from ai.tool_schemas import (
@@ -129,8 +129,12 @@ def _detect_browser(text: str) -> Optional[str]:
 
 
 class CommandRouter:
-    def __init__(self):
+    def __init__(self, memory_manager: Optional[Any] = None):
         self.settings = SettingsManager()
+        from core.deliberative_engine import DeliberativeReasoningEngine
+        from core.memory import MemoryManager
+        self.memory = memory_manager or MemoryManager()
+        self.intelligence = DeliberativeReasoningEngine(self.memory)
 
     def _generate_note_content(self, topic: str) -> str:
         """
@@ -241,6 +245,15 @@ class CommandRouter:
         """
         Parses text and maps it to a validated typed action schema.
         """
+        raw_clean = (raw_input or "").strip().lower().rstrip(".,!?;: ")
+        user_name = self.settings.get("user_name", "Boss")
+        if not raw_clean or raw_clean in [
+            "hey friday", "hi friday", "hello friday", "ok friday", "okay friday", "friday"
+        ]:
+            return ConversationalResponseAction(
+                response_text=f"Hello {user_name}, what can I do for you?"
+            )
+
         cmd = self.clean_command(raw_input)
         cmd_lower = cmd.lower()
 
@@ -592,18 +605,35 @@ class CommandRouter:
             mem = psutil.virtual_memory().percent
             return ConversationalResponseAction(response_text=f"All systems operational. CPU load is at {cpu}%, and RAM usage is at {mem}%.")
 
-        # 14. Conversational greetings
-        if any(cmd_lower.startswith(g) for g in ["hello", "hi", "hey", "good morning", "good evening", "who are you"]):
-            user_name = self.settings.get("user_name", "Boss")
+        user_name = self.settings.get("user_name", "Boss")
+
+        # 14. Wake greetings (Hey Friday / Hi Friday / Hello Friday)
+        if cmd_lower in ["hey friday", "hi friday", "hello friday", "ok friday", "okay friday", "hey friday.", "hi friday.", "friday"]:
+            return ConversationalResponseAction(
+                response_text=f"Hello {user_name}, what can I do for you?"
+            )
+
+        # 15. Inquiring about operational state & how FRIDAY is feeling
+        if any(q in cmd_lower for q in [
+            "how are you", "how're you", "how are you doing", "how are you feeling",
+            "how do you feel", "how is it going", "how's it going", "how do you do",
+            "how is your day", "how's your day", "are you feeling okay"
+        ]):
+            return ConversationalResponseAction(
+                response_text=f"I'm functioning at peak performance, {user_name}. Background listening is active, memory buffers are clear, and I'm ready to assist you."
+            )
+
+        # 16. Conversational greetings
+        if any(cmd_lower.startswith(g) for g in ["hello", "hi", "hey", "good morning", "good evening", "good afternoon"]):
             return ConversationalResponseAction(
                 response_text=f"Greetings, {user_name}. FRIDAY systems are fully operational and standing by for your command."
             )
 
-        # 15. Informational Queries & General Questions (Redirect to Google Chrome)
-        # e.g. "what is the on road price of suzuki fronx", "who is ...", "how to ...", "price of ..."
+        # 17. Explicit Market / Product / Research Queries (Redirect to Google Chrome)
+        # e.g. "what is the on road price of suzuki fronx", "who is elon musk", "price of suzuki fronx"
         info_query_match = re.search(
-            r"^(?:what(?:'s|\s+is|\s+are)?|who(?:'s|\s+is|\s+was|\s+are)?|how(?:\s+to|\s+does|\s+do|\s+can)?|"
-            r"why(?:\s+is|\s+does|\s+do)?|where(?:\s+is|\s+can)?|when(?:\s+is|\s+was)?|"
+            r"^(?:who\s+(?:is|was)\s+(?!you\b|friday\b|your\b)[a-z0-9\s]+|"
+            r"what(?:\s+is|\'s)\s+the\s+(?:on\s+road\s+)?(?:price|cost|rate|specs|mileage)\b|"
             r"price\s+of|cost\s+of|rate\s+of|on\s+road\s+price|tell\s+me\s+about|info\s+on|information\s+about)\b"
             r"|\b(?:price|cost|mileage|review|specs|specifications|vs|versus)\b",
             cmd_lower
@@ -612,8 +642,13 @@ class CommandRouter:
             clean_q = cmd.strip().rstrip("?.!")
             return WebSearchAction(query=clean_q, browser="chrome")
 
-        # 16. Fallback: Automatically redirect any query or request to Google in Chrome
-        if cmd and len(cmd) > 2:
-            return WebSearchAction(query=cmd, browser="chrome")
+        # 18. Deliberative Reasoning Engine Check (Conversations, Feelings, Memory, and Sensibility)
+        delib = self.intelligence.deliberate(cmd)
+        if delib.intent in ("conversation", "memory_store", "memory_recall", "unsafe_refusal"):
+            return ConversationalResponseAction(response_text=delib.response_text)
 
-        return ConversationalResponseAction(response_text="Hello Boss, what can I do for you?")
+        # 19. Natural Conversational Fallback (NEVER open Chrome on chit-chat or natural talk)
+        if delib.response_text:
+            return ConversationalResponseAction(response_text=delib.response_text)
+
+        return ConversationalResponseAction(response_text=f"Hello {user_name}, what can I do for you?")

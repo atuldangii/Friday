@@ -119,7 +119,11 @@ class DeliberativeReasoningEngine:
 
         # ── 4. Conversation Memory Queries ("Remembers the conversation") ──────
         # A. Repeat what FRIDAY just said
-        if any(p in cmd_lower for p in ["repeat that", "what did you just say", "say that again", "what did you say"]):
+        if any(p in cmd_lower for p in [
+            "repeat that", "what did you just say", "say that again", "what did you say",
+            "repeat what you said", "can you repeat that", "repeat that please", "say again",
+            "what was that", "pardon"
+        ]):
             thought = "Memory Query: User requested repetition of previous assistant message."
             if last_turn_assistant and last_turn_assistant.get("content"):
                 prev_msg = last_turn_assistant["content"]
@@ -138,7 +142,12 @@ class DeliberativeReasoningEngine:
                 )
 
         # B. What did the user just say / ask?
-        if any(p in cmd_lower for p in ["what did i just say", "what was my last question", "what did i ask you", "what was my last command"]):
+        if any(p in cmd_lower for p in [
+            "what did i just say", "what did i say", "what was my last question",
+            "what did i ask you", "what did i ask", "what did i tell you",
+            "what was my last command", "repeat what i said", "do you remember what i said",
+            "what was my last statement"
+        ]):
             thought = "Memory Query: User asking to recall their previous input."
             if last_turn_user and last_turn_user.get("content"):
                 prev_user_msg = last_turn_user["content"]
@@ -157,7 +166,10 @@ class DeliberativeReasoningEngine:
                 )
 
         # C. Summary of conversation
-        if any(p in cmd_lower for p in ["what were we talking about", "summarize our conversation", "what have we talked about"]):
+        if any(p in cmd_lower for p in [
+            "what were we talking about", "summarize our conversation", "what have we talked about",
+            "what did we talk about", "what did we discuss", "conversation history", "recap our conversation"
+        ]):
             thought = "Memory Query: Synthesizing recent conversation history."
             if recent_turns and len(recent_turns) > 1:
                 topics = [f"{t['role'].capitalize()}: {t['content'][:60]}" for t in recent_turns[-4:]]
@@ -178,7 +190,7 @@ class DeliberativeReasoningEngine:
 
         # D. Explicit Memory Store: "Remember that [X] is [Y]" / "Remember my [X] is [Y]"
         store_match = re.search(
-            r"^(?:hey\s+friday\s*,\s*|friday\s*,\s*)?remember\s+(?:that\s+)?(?:my\s+)?(.+?)\s+(?:is|are|=|was)\s+(.+)$",
+            r"^(?:hey\s+friday\s*,\s*|friday\s*,\s*)?remember\s+(?:that\s+)?(?:my\s+)?(.+?)\s+(?:is|are|=|was|likes?|loves?)\s+(.+)$",
             cmd_lower,
         )
         if store_match:
@@ -196,11 +208,21 @@ class DeliberativeReasoningEngine:
 
         # E. Explicit Memory Recall: "Do you remember [X]?" / "What is my [X]?"
         recall_match = re.search(
-            r"^(?:do\s+you\s+remember\s+(?:my\s+|what\s+is\s+my\s+)?|what\s+is\s+my\s+|what\'s\s+my\s+|who\s+is\s+my\s+)(.+?)[\?\.]*$",
+            r"^(?:do\s+you\s+remember\s+(?:what\s+is\s+my\s+|my\s+)?|what\s+is\s+my\s+|what\'s\s+my\s+|who\s+is\s+my\s+|tell\s+me\s+my\s+)(.+?)[\?\.]*$",
             cmd_lower,
         )
+        which_match = re.search(
+            r"^(?:which|what)\s+(.+?)\s+do\s+i\s+(?:have|drive|like|own|use)[\?\.]*$",
+            cmd_lower,
+        )
+        matched_search_key = None
         if recall_match:
-            search_key = recall_match.group(1).strip()
+            matched_search_key = recall_match.group(1).strip()
+        elif which_match:
+            matched_search_key = which_match.group(1).strip()
+
+        if matched_search_key:
+            search_key = matched_search_key
             val = self.memory.recall_fact(search_key)
             if not val:
                 # Try finding related facts
@@ -217,7 +239,7 @@ class DeliberativeReasoningEngine:
                     intent="memory_recall",
                     response_text=f"You told me that your {search_key} is {val}, {user_name}.",
                 )
-            elif "favorite" in search_key or "favourite" in search_key or "name" in search_key:
+            elif "favorite" in search_key or "favourite" in search_key or "name" in search_key or "car" in search_key or "project" in search_key:
                 thought = f"Memory Recall: No stored record found for '{search_key}'."
                 return DeliberationResult(
                     thought=thought,
@@ -381,18 +403,35 @@ class DeliberativeReasoningEngine:
         p_lower = prompt.lower().strip()
 
         # ── A. Greetings & Well-being
+        # 1. Wake word direct greeting ("Hey Friday" -> "Hello Boss, what can I do for you?")
+        if p_lower in [
+            "hey friday", "hi friday", "hello friday", "ok friday", "okay friday",
+            "friday", "hey friday.", "hi friday.", "hello friday."
+        ]:
+            thought = "Conversational dialogue: Responsive wake greeting acknowledgment."
+            return (
+                thought,
+                f"Hello {user_name}, what can I do for you?",
+            )
+
+        # 2. Inquiring about operational state & how FRIDAY is feeling
+        if any(q in p_lower for q in [
+            "how are you", "how're you", "how are you doing", "how are you feeling",
+            "how do you feel", "how is it going", "how's it going", "how do you do",
+            "how is your day", "how's your day", "are you feeling okay", "how are you feeling today"
+        ]):
+            thought = "Conversational dialogue: Inquiring about assistant's operational state."
+            return (
+                thought,
+                f"I'm functioning at peak performance, {user_name}. Background listening is active, memory buffers are clear, and I'm ready to assist you.",
+            )
+
+        # 3. Generic greetings
         if any(p_lower.startswith(g) for g in ["hello", "hi", "hey", "good morning", "good evening", "good afternoon"]):
             thought = "Conversational dialogue: Warm, authoritative greeting."
             return (
                 thought,
                 f"Greetings, {user_name}. All systems are optimal and running at full efficiency. How are you doing today?",
-            )
-
-        if any(q in p_lower for q in ["how are you", "how're you", "how are you doing", "how are you feeling", "how do you do"]):
-            thought = "Conversational dialogue: Inquiring about assistant's operational state."
-            return (
-                thought,
-                f"I'm functioning at peak performance, {user_name}. Background listening is active, memory buffers are clear, and I'm ready to assist you.",
             )
 
         # ── B. Emotional Empathy & User Feelings
@@ -502,6 +541,10 @@ class DeliberativeReasoningEngine:
             "python": "Python is a high-level, dynamically typed programming language known for its clean syntax, versatility in AI and automation, and extensive ecosystem.",
             "nikola tesla": "Nikola Tesla was a visionary electrical engineer and inventor who designed the alternating current electricity system, radio fundamentals, and the Tesla coil.",
             "albert einstein": "Albert Einstein was a theoretical physicist widely acknowledged as one of the greatest scientists of all time, best known for developing the theory of relativity.",
+            "speed of light": "The speed of light in a vacuum is approximately 300,000 kilometers per second, or 186,000 miles per second.",
+            "gravity": "Gravity is the natural force that causes objects with mass or energy to be attracted to one another.",
+            "machine learning": "Machine learning is a subset of artificial intelligence focused on building algorithms that learn patterns from data and improve their performance over time.",
+            "internet": "The internet is a globally connected network of computers that communicate using standardized Internet Protocol protocols.",
         }
         for k, fact in quick_facts.items():
             if k == clean_q or f" {k} " in f" {clean_q} ":
