@@ -1067,7 +1067,10 @@ class MainWindow(QMainWindow):
         self.overlay.set_state(state)
         st_clean = state.upper()
         if hasattr(self, "listen_btn") and self.listen_btn:
-            if st_clean in ("LISTENING", "SPEAKING"):
+            if st_clean == "THINKING":
+                self.listen_btn.setText("💭  Thinking...")
+                self.listen_btn.setStyleSheet("background: rgba(0, 229, 255, 0.18); border: 1.5px solid #00E5FF; border-radius: 8px; color: #00E5FF; font-weight: bold; font-size: 11.5px; padding: 0 14px;")
+            elif st_clean in ("LISTENING", "SPEAKING"):
                 self.listen_btn.setText("🎙  Listening...")
                 self.listen_btn.setStyleSheet("background: rgba(255, 170, 51, 0.18); border: 1.5px solid #FFAA33; border-radius: 8px; color: #FFAA33; font-weight: bold; font-size: 11.5px; padding: 0 14px;")
             elif st_clean in ("PROCESSING", "EXECUTING"):
@@ -1081,7 +1084,10 @@ class MainWindow(QMainWindow):
                 self.listen_btn.setStyleSheet("background: rgba(34, 197, 94, 0.12); border: 1.5px solid #22C55E; border-radius: 8px; color: #22C55E; font-weight: bold; font-size: 11.5px; padding: 0 14px;")
 
         if self._status_ready_val:
-            if st_clean in ("LISTENING", "SPEAKING"):
+            if st_clean == "THINKING":
+                self._status_ready_val.setText("● Thinking...")
+                self._status_ready_val.setStyleSheet("color: #00E5FF; font-size: 10.5px; font-weight: bold;")
+            elif st_clean in ("LISTENING", "SPEAKING"):
                 self._status_ready_val.setText(f"● {st_clean.title()}")
                 self._status_ready_val.setStyleSheet("color: #FFAA33; font-size: 10.5px; font-weight: bold;")
             elif st_clean in ("PROCESSING", "EXECUTING"):

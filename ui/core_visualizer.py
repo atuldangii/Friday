@@ -110,6 +110,8 @@ class CoreVisualizerWidget(QWidget):
             pri, sec = _RED, QColor(255, 120, 120)
         elif self._state == "LISTENING":
             pri, sec = _AMBER, _PALE
+        elif self._state == "THINKING":
+            pri, sec = QColor(0x00, 0xE5, 0xFF), QColor(0x80, 0xF0, 0xFF)
         elif self._state in ("PROCESSING", "EXECUTING"):
             pri, sec = _ORANGE, _AMBER
         elif self._state == "SPEAKING":

@@ -120,6 +120,7 @@ class MessageBubble(QFrame):
 
     def _init_ui(self):
         is_user = self.sender.upper() == "USER"
+        is_thought = self.sender.upper() == "THOUGHT"
 
         layout = QHBoxLayout(self)
         layout.setContentsMargins(12, 10, 12, 10)
@@ -144,6 +145,12 @@ class MessageBubble(QFrame):
             lbl = QLabel()
             lbl.setWordWrap(True)
             lbl.setTextInteractionFlags(Qt.TextSelectableByMouse)
+
+            if is_thought:
+                lbl.setText(f"<span style='color: #00E5FF; font-style: italic;'>💭 <b>Thinking:</b> {line_str}</span>")
+                lbl.setStyleSheet("font-size: 12px; line-height: 1.4;")
+                content_lay.addWidget(lbl)
+                continue
 
             # Check if this line is a success confirmation
             is_success_line = (
@@ -177,7 +184,15 @@ class MessageBubble(QFrame):
         layout.addLayout(content_lay, 1)
 
         # Container card styling
-        if is_user:
+        if is_thought:
+            self.setStyleSheet("""
+                MessageBubble {
+                    background-color: #0A141C;
+                    border: 1px solid rgba(0, 229, 255, 0.35);
+                    border-radius: 12px;
+                }
+            """)
+        elif is_user:
             self.setStyleSheet("""
                 MessageBubble {
                     background-color: #17171C;

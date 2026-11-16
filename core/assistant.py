@@ -34,6 +34,7 @@ from automation.files import FileController
 from config.constants import RiskLevel
 from config.settings import SettingsManager
 from core.command_router import CommandRouter
+from core.deliberative_engine import DeliberativeReasoningEngine
 from core.memory import MemoryManager
 from core.permissions import ActionRequest, SecurityManager
 from core.task_planner import TaskPlanner
@@ -68,6 +69,7 @@ class FridayCore:
         self.router = CommandRouter()
         self.cloud_ai = CloudAIClient()
         self.planner = TaskPlanner(self.execute_action)
+        self.intelligence = DeliberativeReasoningEngine(self.memory)
 
         # Voice
         self.tts = TextToSpeechEngine()
@@ -181,19 +183,51 @@ class FridayCore:
             self._set_state("IDLE")
             return msg
 
-        # Execute multi-step or single step via planner
-        self._set_state("EXECUTING")
-        success, response_message = self.planner.execute_plan(
-            clean_text,
-            progress_callback=self.on_task_progress,
-        )
+        # ── 1. Deliberative Thinking & Sensibility Phase ──────────────────────
+        self._set_state("THINKING")
+        deliberation = self.intelligence.deliberate(clean_text)
+
+        # Emit thought reflection to UI
+        if deliberation.thought and self.on_chat_message:
+            self.on_chat_message("THOUGHT", deliberation.thought)
+
+        success = True
+        response_message = ""
+
+        # ── 2. Decision Routing ───────────────────────────────────────────────
+        if deliberation.intent in ("conversation", "memory_store", "memory_recall", "unsafe_refusal"):
+            response_message = deliberation.response_text
+            success = deliberation.is_sensible
+        elif deliberation.intent == "desktop_action":
+            self._set_state("EXECUTING")
+            target_cmd = deliberation.planned_command or clean_text
+            success, response_message = self.planner.execute_plan(
+                target_cmd,
+                progress_callback=self.on_task_progress,
+            )
+        else:
+            self._set_state("EXECUTING")
+            success, response_message = self.planner.execute_plan(
+                clean_text,
+                progress_callback=self.on_task_progress,
+            )
 
         t_end = time.perf_counter()
         elapsed_ms = (t_end - t_start) * 1000
         # Audit log the execution duration
         self.security.log_audit("COMMAND_EXECUTION", "process_command", f"{clean_text} [{elapsed_ms:.1f}ms]", success=success)
 
-        # Log memory of interaction
+        # ── 3. Multi-Turn Conversation Memory Logging ─────────────────────────
+        self.memory.log_turn(
+            role="user",
+            content=clean_text,
+        )
+        self.memory.log_turn(
+            role="assistant",
+            content=response_message,
+            thought=deliberation.thought,
+            action_type=deliberation.intent,
+        )
         self.memory.log_interaction(clean_text, response_message)
 
         # Output response
